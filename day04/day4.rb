@@ -1,4 +1,6 @@
 class PassportBatch
+  REQS = %w[byr iyr eyr hgt hcl ecl pid]
+
   def initialize(filename)
     @batch = IO.read(filename).split("\n\n")
   end
@@ -12,19 +14,11 @@ class PassportBatch
   end
 
   def valid_pass?(passp)
-    reqs = %w[byr iyr eyr hgt hcl ecl pid]
-    reqs.all?{|req| passp.include?("#{req}:")}
+    REQS.all?{|req| passp.include?("#{req}:")}
   end
 
   def valid_pass2?(passp)
-    valid_pass?(passp) &&
-      valid_byr?(passp.match(/byr:([^\s]+)/)[1]) &&
-      valid_iyr?(passp.match(/iyr:([^\s]+)/)[1]) &&
-      valid_eyr?(passp.match(/eyr:([^\s]+)/)[1]) &&
-      valid_hgt?(passp.match(/hgt:([^\s]+)/)[1]) &&
-      valid_hcl?(passp.match(/hcl:([^\s]+)/)[1]) &&
-      valid_ecl?(passp.match(/ecl:([^\s]+)/)[1]) &&
-      valid_pid?(passp.match(/pid:([^\s]+)/)[1])
+    valid_pass?(passp) && REQS.all? {|req| send("valid_#{req}?", passp.match(/#{req}:([^\s]+)/)[1]) }
   end
 
   def valid_byr?(byr)
@@ -40,7 +34,7 @@ class PassportBatch
   end
 
   def valid_hgt?(hgt)
-    val = hgt[0..-3].to_i
+    val = hgt.to_i
     if hgt.include?('cm')
       val <= 193 && val >= 150
     elsif hgt.include?('in')
