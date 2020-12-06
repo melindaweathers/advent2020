@@ -4,22 +4,18 @@ class Plane
   end
 
   def counts
-    len = 0
-    @groups.each do |group|
-      len += group.gsub("\n", "").chars.uniq.length
+    @groups.inject(0) do |sum, group|
+      sum + group.gsub("\n", "").chars.uniq.length
     end
-    len
   end
 
   def everyone_counts
-    len = 0
-    @groups.each do |group|
+    @groups.inject(0) do |sum, group|
       persons = group.split("\n")
-      persons[0].each_char do |char|
-        len += 1 if persons.all?{|person| person.include?(char)}
+      sum + persons[0].chars.inject(0) do |psum, char|
+        psum + (persons.all?{|person| person.include?(char)} ? 1 : 0)
       end
     end
-    len
   end
 end
 
