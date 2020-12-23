@@ -8,11 +8,7 @@ class SeaMonster
     IO.readlines(filename, chomp: true).each do |line|
       if line =~ /^\d+:/
         num, rule = line.split(': ')
-        if rule == '"a"' || rule == '"b"'
-          @rules[num.to_i] = rule.gsub('"', '')
-        else
-          @rules[num.to_i] = rule
-        end
+        @rules[num.to_i] = rule.gsub('"', '')
       elsif line =~ /[ab]/
         @messages << line
       end
@@ -22,21 +18,20 @@ class SeaMonster
   end
 
   def build_regex
-    Regexp.new('^' + build_regex_string(@rules[0], 0) + '$')
+    Regexp.new('^' + build_regex_string(0) + '$')
   end
 
-  def build_regex_string(rule, rule_idx = 0)
+  def build_regex_string(rule_idx)
+    rule = @rules[rule_idx]
     if ['a', 'b'].include?(rule)
       rule
     elsif rule_idx == 8 && @part2rules
-      "(" + build_regex_string(@rules[42], 42) + ")+"
+      "(" + build_regex_string(42) + ")+"
     elsif rule_idx == 11 && @part2rules
       @num += 1
-      rule42 = build_regex_string(@rules[42], 42)
-      rule31 = build_regex_string(@rules[31], 31)
-      "(?<try#{@num}>#{rule42}\\g<try#{@num}>*#{rule31})+"
+      "(?<try#{@num}>#{build_regex_string(42)}\\g<try#{@num}>*#{build_regex_string(31)})+"
     else
-      "(" + rule.split(' ').map{|part| part == '|' ? '|' : build_regex_string(@rules[part.to_i], part.to_i)}.join + ")"
+      "(" + rule.split(' ').map{|part| part == '|' ? '|' : build_regex_string(part.to_i)}.join + ")"
     end
   end
 
