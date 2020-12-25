@@ -21,8 +21,11 @@ class Tile
     [orig, left1, left2, left3, flip, flipleft1, flipleft2, flipleft3]
   end
 
-  def at_final_orientation
-    @orientations[@final_orientation]
+  # Use correct orientation and strip borders
+  def to_piece
+    @orientations[@final_orientation][1..-2].map do |row|
+      row[1..-2]
+    end
   end
 
   def rotate_left(arr)
@@ -127,7 +130,16 @@ class Puzzle
         end
       end
     end
-    @grid.each{|row| puts row.map{|t| "#{t.num}: #{t.final_orientation}" if t}.join(' ')}
+    @final_grid = []
+
+    @grid.each do |row|
+      0.upto(7) do |line|
+        final_row = []
+        row.each { |tile| final_row += tile.to_piece[line] }
+        @final_grid << final_row
+      end
+    end
+    #puts @final_grid.map{|row| puts row.join(' ')}
   end
 
 
