@@ -5,12 +5,12 @@ class Tile
   def initialize(lines)
     @num = lines[0][5..-2].to_i
     @orig = lines[1..-1].map{|line| line.chars}
-    @orientations = find_orientations(@orig)
+    @orientations = Tile.find_orientations(@orig)
     @final_orientation = nil
   end
 
   # original, left1, left2, left3, flip, flip+left1, flip+left2, flip+left3
-  def find_orientations(orig)
+  def self.find_orientations(orig)
     left1 = rotate_left(orig)
     left2 = rotate_left(left1)
     left3 = rotate_left(left2)
@@ -28,7 +28,7 @@ class Tile
     end
   end
 
-  def rotate_left(arr)
+  def self.rotate_left(arr)
     arr.transpose.reverse
   end
 
@@ -74,6 +74,7 @@ class Tile
 end
 
 class Puzzle
+  FINAL_TILE_SIZE = 8
   def initialize(filename)
     @tiles = []
     IO.read(filename, chomp: true).split("\n\n").each do |chars|
@@ -82,6 +83,7 @@ class Puzzle
     @grid_size = Math.sqrt(@tiles.length).to_i
     @corners = find_corners
     @edges = find_edges
+    build_grid
   end
 
   def find_corners
@@ -133,7 +135,7 @@ class Puzzle
     @final_grid = []
 
     @grid.each do |row|
-      0.upto(7) do |line|
+      0.upto(FINAL_TILE_SIZE - 1) do |line|
         final_row = []
         row.each { |tile| final_row += tile.to_piece[line] }
         @final_grid << final_row
@@ -142,10 +144,41 @@ class Puzzle
     #puts @final_grid.map{|row| puts row.join(' ')}
   end
 
+  def build_monster(final_grid_size)
+    row1 = '                  # '
+    row2 = '#    ##    ##    ###'
+    row3 = ' #  #  #  #  #  #   '
+    space = ' '*(final_grid_size - 20)
+    "#{row1}#{space}#{row2}#{space}#{row3}".chars.map{|c| c == '#' ? '1' : '0'}.join.to_i(2)
+  end
+
+  def find_monsters(grid_orientation)
+    line = grid_orientation.flatten.map{|char| char == '#' ? '1' : '0'}.join.to_i(2)
+    len = grid_orientation.length**2
+    monster_count = 0
+    monster = build_monster(grid_orientation.length)
+    len.times do
+      if (line & monster) == monster
+        monster_count += 1
+        line = (line ^ monster)
+      end
+      monster = monster << 1
+    end
+    [monster_count, line.to_s(2).count("1")]
+  end
+
+  def find_monsters_and_orientation
+    Tile.find_orientations(@final_grid).each do |orientation|
+      monster_count, roughness = find_monsters(orientation)
+      return roughness if monster_count > 0
+    end
+  end
+
 
 end
 
 #puts Puzzle.new('sample.txt').find_corners.inject(&:*)
 #puts Puzzle.new('input.txt').find_corners.inject(&:*)
 
-Puzzle.new('sample.txt').build_grid
+puts Puzzle.new('sample.txt').find_monsters_and_orientation
+puts Puzzle.new('input.txt').find_monsters_and_orientation
