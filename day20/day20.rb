@@ -1,7 +1,6 @@
 require 'set'
 class Tile
-  DIRECTIONS = [:n, :e, :s, :w]
-  attr_accessor :num, :orientations, :num_matches, :final_orientation
+  attr_accessor :num, :orientations, :final_orientation
   def initialize(lines)
     @num = lines[0][5..-2].to_i
     @orig = lines[1..-1].map{|line| line.chars}
@@ -52,10 +51,6 @@ class Tile
       matches = case dir
       when :s
         me.last == orientation.first
-      when :n
-        me.first == orientation.last
-      when :w
-        me.map(&:first) == orientation.map(&:last)
       when :e
         me.map(&:last) == orientation.map(&:first)
       end
@@ -83,7 +78,13 @@ class Puzzle
     @grid_size = Math.sqrt(@tiles.length).to_i
     @corners = find_corners
     @edges = find_edges
+    @used_pieces = Set.new
+    @final_grid = []
     build_grid
+  end
+
+  def corners_product
+    @corners.map(&:num).inject(&:*)
   end
 
   def find_corners
@@ -94,46 +95,39 @@ class Puzzle
     @tiles.map { |tile| tile.num_matches(@tiles) == 3 ? tile : nil }.compact
   end
 
+  def place_next_tile(prev_tile, direction, row, col)
+    @tiles.each do |edge|
+      next if @used_pieces.include?(edge.num)
+      new_orientation = prev_tile.matches_side?(prev_tile.final_orientation, edge, direction)
+      if new_orientation
+        edge.final_orientation = new_orientation
+        @grid[row][col] = edge
+        @used_pieces << edge.num
+        break
+      end
+    end
+  end
+
   def build_grid
     @grid = Array.new(@grid_size) { Array.new(@grid_size) }
-    @used_pieces = Set.new
     first_corner = @corners.first
     first_corner.final_orientation = first_corner.first_corner_orientation(@edges)
     @used_pieces << first_corner.num
     @grid[0][0] = first_corner
-    row = 0
+
     # Build first row
     1.upto(@grid_size - 1) do |col|
-      prev_tile = @grid[row][col-1]
-      @tiles.each do |edge|
-        next if @used_pieces.include?(edge.num)
-        new_orientation = prev_tile.matches_side?(prev_tile.final_orientation, edge, :e)
-        if new_orientation
-          edge.final_orientation = new_orientation
-          @grid[row][col] = edge
-          @used_pieces << edge.num
-          break
-        end
-      end
+      place_next_tile(@grid[0][col-1], :e, 0, col)
     end
+
     # Build other rows
     1.upto(@grid_size - 1) do |row|
       0.upto(@grid_size - 1) do |col|
-        prev_tile = @grid[row-1][col]
-        @tiles.each do |edge|
-          next if @used_pieces.include?(edge.num)
-          new_orientation = prev_tile.matches_side?(prev_tile.final_orientation, edge, :s)
-          if new_orientation
-            edge.final_orientation = new_orientation
-            @grid[row][col] = edge
-            @used_pieces << edge.num
-            break
-          end
-        end
+        place_next_tile(@grid[row-1][col], :s, row, col)
       end
     end
-    @final_grid = []
 
+    # Build the final grid with all the tiles
     @grid.each do |row|
       0.upto(FINAL_TILE_SIZE - 1) do |line|
         final_row = []
@@ -154,10 +148,9 @@ class Puzzle
 
   def find_monsters(grid_orientation)
     line = grid_orientation.flatten.map{|char| char == '#' ? '1' : '0'}.join.to_i(2)
-    len = grid_orientation.length**2
     monster_count = 0
     monster = build_monster(grid_orientation.length)
-    len.times do
+    (grid_orientation.length**2).times do
       if (line & monster) == monster
         monster_count += 1
         line = (line ^ monster)
@@ -173,12 +166,10 @@ class Puzzle
       return roughness if monster_count > 0
     end
   end
-
-
 end
 
-#puts Puzzle.new('sample.txt').find_corners.inject(&:*)
-#puts Puzzle.new('input.txt').find_corners.inject(&:*)
+puts Puzzle.new('sample.txt').corners_product
+puts Puzzle.new('input.txt').corners_product
 
 puts Puzzle.new('sample.txt').find_monsters_and_orientation
 puts Puzzle.new('input.txt').find_monsters_and_orientation
